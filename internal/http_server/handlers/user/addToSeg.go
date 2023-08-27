@@ -2,17 +2,21 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/middleware"
 
 	"avito_service/internal/http_server/handlers/segment/response"
+	"avito_service/internal/storage"
 	"avito_service/pkg"
 )
 
 type Adder interface {
 	AddUserToSeg(list []string, id int) error
+	IfExists(userId int, slug []string) error
 }
 
 func AddUserToSeg(logger *slog.Logger, adder Adder) http.HandlerFunc {
@@ -31,10 +35,35 @@ func AddUserToSeg(logger *slog.Logger, adder Adder) http.HandlerFunc {
 
 		logger.Info("request decoded", slog.Any("request", listOfSegments))
 
+		if err := adder.IfExists(listOfSegments.Id, listOfSegments.Slug); err != nil {
+			var userError storage.UserNotExists
+			var segmentError storage.SegmentNotExists
+			if errors.As(err, &userError) {
+				logger.Error("provided user not exists", userError)
+				response.WriteToJson(w, http.StatusConflict, fmt.Sprintf("user %d not exists", userError.Id))
+				return
+			} else if errors.As(err, &segmentError) {
+				logger.Error("provided segment is not active", segmentError)
+				response.WriteToJson(w, http.StatusNotFound, fmt.Sprintf("slug %s not exists", segmentError.Slug))
+				return
+			} else {
+				logger.Error("unexpected error from db")
+				response.WriteToJson(w, http.StatusInternalServerError, "")
+				return
+			}
+		}
+
 		if err := adder.AddUserToSeg(listOfSegments.Slug, listOfSegments.Id); err != nil {
-			logger.Error("failed to save slug to db", err)
-			response.WriteToJson(w, http.StatusInternalServerError, listOfSegments.Slug)
-			return
+			var segmentErr storage.SegmentAlreadyExistsError
+			if errors.As(err, &segmentErr) {
+				logger.Error("segment with this user is already associated", segmentErr)
+				response.WriteToJson(w, http.StatusConflict, fmt.Sprintf("segment %s with this user is already associated", segmentErr.Slug))
+				return
+			} else {
+				logger.Error("unexpected error from db", err)
+				response.WriteToJson(w, http.StatusInternalServerError, "")
+				return
+			}
 		}
 
 		logger.Info("request successfully handled")
