@@ -2,17 +2,20 @@ package segment
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/middleware"
 
 	"avito_service/internal/http_server/handlers/segment/response"
+	"avito_service/internal/storage"
 	"avito_service/pkg"
 )
 
 type SegmentsSaver interface {
 	CreateSegment(slug string) error
+	IfSlugExists(slug string) error
 }
 
 func SaveSegment(logger *slog.Logger, saver SegmentsSaver) http.HandlerFunc {
@@ -30,6 +33,15 @@ func SaveSegment(logger *slog.Logger, saver SegmentsSaver) http.HandlerFunc {
 		}
 
 		logger.Info("request decoded", slog.Any("request", request))
+
+		if err := saver.IfSlugExists(request.Slug); err != nil {
+			var slugErr storage.SegmentAlreadyExistsError
+			if errors.As(err, &slugErr) {
+				logger.Error("segment already exists", slugErr.Slug)
+				response.WriteToJson(w, http.StatusBadRequest, "already exists")
+				return
+			}
+		}
 
 		if err := saver.CreateSegment(request.Slug); err != nil {
 			logger.Error("failed to create user to db", err)

@@ -2,7 +2,7 @@ package storage
 
 import "fmt"
 
-type SegmentAlreadyExistsError struct {
+type SegmentAlreadyExistsForUserError struct {
 	Slug string
 }
 
@@ -14,7 +14,21 @@ type SegmentNotExists struct {
 	Slug string
 }
 
-func (e SegmentAlreadyExistsError) Error() string {
+type SegmentsNotFound struct {
+}
+
+type SegmentAlreadyExistsError struct {
+	Slug string
+}
+
+func (o SegmentAlreadyExistsError) Error() string {
+	return fmt.Sprintf("segment %s already exists", o.Slug)
+}
+func (s SegmentsNotFound) Error() string {
+	return fmt.Sprintf("no any active segment for this user was found")
+}
+
+func (e SegmentAlreadyExistsForUserError) Error() string {
 	return fmt.Sprintf("user already has the segment: %s", e.Slug)
 }
 

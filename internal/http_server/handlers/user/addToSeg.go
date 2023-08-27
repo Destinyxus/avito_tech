@@ -54,7 +54,7 @@ func AddUserToSeg(logger *slog.Logger, adder Adder) http.HandlerFunc {
 		}
 
 		if err := adder.AddUserToSeg(listOfSegments.Slug, listOfSegments.Id); err != nil {
-			var segmentErr storage.SegmentAlreadyExistsError
+			var segmentErr storage.SegmentAlreadyExistsForUserError
 			if errors.As(err, &segmentErr) {
 				logger.Error("segment with this user is already associated", segmentErr)
 				response.WriteToJson(w, http.StatusConflict, fmt.Sprintf("segment %s with this user is already associated", segmentErr.Slug))

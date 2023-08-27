@@ -12,3 +12,7 @@ type SegmentToAdd struct {
 	Id   int      `json:"id"`
 	Slug []string `json:"slug"`
 }
+
+type RequestActive struct {
+	Id int `json:"id"`
+}

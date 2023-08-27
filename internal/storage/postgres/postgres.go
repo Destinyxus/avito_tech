@@ -28,14 +28,14 @@ var (
 	)`
 	segmQuery = `CREATE TABLE IF NOT EXISTS segments (
 		    id serial primary key,
-		    slug varchar(100) not null unique,
+		    slug varchar(100) not null ,
 			isActual boolean
 		)`
 
 	userSegmQuery = `CREATE TABLE IF NOT EXISTS users_segments(
 		    id serial primary key,
 		    user_id int references users(id),
-		    segment_id int references segments(id) unique,
+		    segment_id int references segments(id),
 		    isActive boolean not null,
 		    created_at timestamp,
 		    deleted_at timestamp
@@ -113,7 +113,7 @@ func (s *Storage) AddUserToSeg(list []string, userid int) error {
 	for _, slug := range list {
 		queryExists := `
             SELECT COUNT(*) FROM users_segments
-            WHERE user_id = $1 AND segment_id IN (SELECT id FROM segments WHERE slug = $2 AND isActual = true)
+            WHERE user_id = $1 AND isActive = true AND segment_id IN (SELECT id FROM segments WHERE slug = $2 AND isActual = true)
         `
 		var count int
 		err := s.db.QueryRow(queryExists, userid, slug).Scan(&count)
@@ -147,10 +147,41 @@ func (s *Storage) DeleteSegmentsOfUser(list []string, userid int) error {
 	return nil
 }
 
-//func (s *Storage) GetActiveSegments(id int) []string {
-//
-//}
+func (s *Storage) GetActiveSegments(userid int) ([]string, error) {
+	query := "SELECT slug FROM segments LEFT JOIN users_segments ON segment_id = segments.id WHERE users_segments.user_id = $1 AND isActive = true"
 
+	var slugs []string
+	rows, err := s.db.Query(query, userid)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var slug string
+		err := rows.Scan(&slug)
+		if err != nil {
+			return nil, err
+		}
+		slugs = append(slugs, slug)
+	}
+
+	if len(slugs) == 0 {
+		return nil, storage.SegmentsNotFound{}
+	}
+	return slugs, nil
+}
+
+func (s *Storage) IfSlugExists(slug string) error {
+	query := "SELECT EXISTS (SELECT 1 FROM segments WHERE slug = $1)"
+
+	var exists bool
+	_ = s.db.QueryRow(query, slug).Scan(&exists)
+	if exists {
+		return storage.SegmentAlreadyExistsError{}
+	}
+
+	return nil
+}
 func (s *Storage) IfExists(userId int, slugList []string) error {
 	query := "SELECT COUNT(*) FROM users WHERE users.id = $1"
 	var count int
