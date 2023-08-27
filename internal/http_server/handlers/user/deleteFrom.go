@@ -60,7 +60,7 @@ func DeleteSegmFromUser(logger *slog.Logger, deletor UserSegDeletor) http.Handle
 		}
 
 		logger.Info("request successfully handled")
-		response.WriteToJson(writer, http.StatusCreated, deleteRequest)
+		response.WriteToJson(writer, http.StatusOK, deleteRequest)
 
 	}
 }

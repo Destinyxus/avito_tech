@@ -2,8 +2,10 @@ package postgres
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 
@@ -124,9 +126,9 @@ func (s *Storage) AddUserToSeg(list []string, userid int) error {
 			return storage.SegmentAlreadyExistsError{Slug: slug}
 		}
 
-		query := "INSERT INTO users_segments (user_id, segment_id, isActive) VALUES ($1,(SELECT id FROM segments WHERE slug = $2 AND isActual = true),true)"
+		query := "INSERT INTO users_segments (user_id, segment_id, isActive, created_at) VALUES ($1,(SELECT id FROM segments WHERE slug = $2 AND isActual = true),true, $3)"
 
-		_, err = s.db.Exec(query, userid, slug)
+		_, err = s.db.Exec(query, userid, slug, time.Now())
 		if err != nil {
 			return err
 		}
@@ -135,10 +137,10 @@ func (s *Storage) AddUserToSeg(list []string, userid int) error {
 }
 
 func (s *Storage) DeleteSegmentsOfUser(list []string, userid int) error {
-	query := "UPDATE users_segments SET isActive = false WHERE user_id = $1 AND isActive = true AND segment_id IN(SELECT id FROM segments WHERE slug = $2 AND isActual = true)"
+	query := "UPDATE users_segments SET isActive = false, deleted_at = $1 WHERE user_id = $2 AND isActive = true AND segment_id IN(SELECT id FROM segments WHERE slug = $3 AND isActual = true)"
 
 	for _, slug := range list {
-		_, err := s.db.Exec(query, userid, slug)
+		_, err := s.db.Exec(query, time.Now(), userid, slug)
 		if err != nil {
 			return err
 		}
@@ -205,4 +207,49 @@ func (s *Storage) IfExists(userId int, slugList []string) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) GetReport(userId int, startDate, endDate time.Time) ([]storage.Segment, error) {
+	query := `
+		SELECT segment_id, isActive, created_at, deleted_at
+		FROM users_segments
+		WHERE user_id = $1
+			AND (created_at >= $2 AND created_at <= $3)
+			AND (deleted_at >= $2 AND deleted_at <= $3 OR deleted_at IS NULL)
+	`
+	query2 := "SELECT COUNT(*) FROM users WHERE users.id = $1"
+	var count int
+
+	err := s.db.QueryRow(query2, userId).Scan(&count)
+	if err != nil {
+		return nil, err
+	}
+
+	if count != 1 {
+		return nil, storage.UserNotExists{Id: userId}
+	}
+	rows, err := s.db.Query(query, userId, startDate, endDate)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, storage.UserNotExists{}
+		}
+	}
+	defer rows.Close()
+
+	var segments []storage.Segment
+
+	for rows.Next() {
+		var segment storage.Segment
+
+		if err := rows.Scan(&segment.ID, &segment.IsActive, &segment.CreatedAt, &segment.DeletedAt); err != nil {
+			return nil, err
+		}
+		segments = append(segments, segment)
+	}
+
+	if len(segments) == 0 {
+		return segments, storage.CSVError{}
+	}
+
+	return segments, nil
 }

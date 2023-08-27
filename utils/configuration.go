@@ -20,6 +20,7 @@ func ConfigureRouter(mux *chi.Mux, logger *slog.Logger, storage *postgres.Storag
 	mux.Post("/addUser", user.AddUserToSeg(logger, storage))
 	mux.Delete("/deleteFromUser", user.DeleteSegmFromUser(logger, storage))
 	mux.Get("/activeSegments", segment.GetActive(logger, storage))
+	mux.Get("/getCSV", user.GetCSV(logger, storage))
 }
 func ConfigureLogger(env string) *slog.Logger {
 	logger := &slog.Logger{}

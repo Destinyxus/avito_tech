@@ -1,7 +1,17 @@
 package storage
 
-import "fmt"
+import (
+	"database/sql"
+	"fmt"
+	"time"
+)
 
+type Segment struct {
+	ID        int
+	IsActive  bool
+	CreatedAt time.Time
+	DeletedAt sql.NullTime
+}
 type SegmentAlreadyExistsForUserError struct {
 	Slug string
 }
@@ -19,6 +29,13 @@ type SegmentsNotFound struct {
 
 type SegmentAlreadyExistsError struct {
 	Slug string
+}
+
+type CSVError struct {
+}
+
+func (c CSVError) Error() string {
+	return fmt.Sprintf("The record not found for this period of time")
 }
 
 func (o SegmentAlreadyExistsError) Error() string {
