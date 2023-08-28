@@ -1,16 +1,15 @@
 package storage
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 )
 
 type Segment struct {
-	ID        int
-	IsActive  bool
-	CreatedAt time.Time
-	DeletedAt sql.NullTime
+	UserId    int       `json:"user_id"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	DeletedAt time.Time `json:"deleted_at"`
 }
 type SegmentAlreadyExistsForUserError struct {
 	Slug string

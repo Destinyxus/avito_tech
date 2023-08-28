@@ -6,16 +6,18 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/middleware"
 
 	"avito_service/internal/http_server/handlers/segment/response"
 	"avito_service/internal/storage"
+	"avito_service/internal/storage/postgres/utils"
 	"avito_service/pkg"
 )
 
 type Adder interface {
-	AddUserToSeg(list []string, id int) error
+	AddUserToSeg(list []string, id int, ttl time.Time) error
 	IfExists(userId int, slug []string) error
 }
 
@@ -53,11 +55,21 @@ func AddUserToSeg(logger *slog.Logger, adder Adder) http.HandlerFunc {
 			}
 		}
 
-		if err := adder.AddUserToSeg(listOfSegments.Slug, listOfSegments.Id); err != nil {
+		ttl, err := utils.SetTTL(listOfSegments.TTL)
+		if err != nil {
+			logger.Error("ttl was not set", ttl)
+		}
+
+		if err := adder.AddUserToSeg(listOfSegments.Slug, listOfSegments.Id, ttl); err != nil {
 			var segmentErr storage.SegmentAlreadyExistsForUserError
+			var segmentExErr storage.SegmentAlreadyExistsError
 			if errors.As(err, &segmentErr) {
 				logger.Error("segment with this user is already associated", segmentErr)
 				response.WriteToJson(w, http.StatusConflict, fmt.Sprintf("segment %s with this user is already associated", segmentErr.Slug))
+				return
+			} else if errors.As(err, &segmentExErr) {
+				logger.Error("segment %s already exists", segmentExErr.Slug)
+				response.WriteToJson(w, http.StatusConflict, segmentExErr.Error())
 				return
 			} else {
 				logger.Error("unexpected error from db", err)

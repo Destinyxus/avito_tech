@@ -40,7 +40,8 @@ var (
 		    segment_id int references segments(id),
 		    isActive boolean not null,
 		    created_at timestamp,
-		    deleted_at timestamp
+		    deleted_at timestamp,
+    		ttl timestamp
 		)`
 )
 
@@ -111,7 +112,7 @@ func (s *Storage) DeleteSegment(slug string) error {
 	return nil
 }
 
-func (s *Storage) AddUserToSeg(list []string, userid int) error {
+func (s *Storage) AddUserToSeg(list []string, userid int, ttl time.Time) error {
 	for _, slug := range list {
 		queryExists := `
             SELECT COUNT(*) FROM users_segments
@@ -123,12 +124,12 @@ func (s *Storage) AddUserToSeg(list []string, userid int) error {
 			return err
 		}
 		if count > 0 {
-			return storage.SegmentAlreadyExistsError{Slug: slug}
+			return storage.SegmentAlreadyExistsForUserError{Slug: slug}
 		}
 
-		query := "INSERT INTO users_segments (user_id, segment_id, isActive, created_at) VALUES ($1,(SELECT id FROM segments WHERE slug = $2 AND isActual = true),true, $3)"
+		query := "INSERT INTO users_segments (user_id, segment_id, isActive, created_at, ttl) VALUES ($1,(SELECT id FROM segments WHERE slug = $2 AND isActual = true),true, $3, $4)"
 
-		_, err = s.db.Exec(query, userid, slug, time.Now())
+		_, err = s.db.Exec(query, userid, slug, time.Now(), ttl)
 		if err != nil {
 			return err
 		}
@@ -211,7 +212,7 @@ func (s *Storage) IfExists(userId int, slugList []string) error {
 
 func (s *Storage) GetReport(userId int, startDate, endDate time.Time) ([]storage.Segment, error) {
 	query := `
-		SELECT segment_id, isActive, created_at, deleted_at
+		SELECT user_id, isActive, created_at, deleted_at
 		FROM users_segments
 		WHERE user_id = $1
 			AND (created_at >= $2 AND created_at <= $3)
@@ -241,7 +242,7 @@ func (s *Storage) GetReport(userId int, startDate, endDate time.Time) ([]storage
 	for rows.Next() {
 		var segment storage.Segment
 
-		if err := rows.Scan(&segment.ID, &segment.IsActive, &segment.CreatedAt, &segment.DeletedAt); err != nil {
+		if err := rows.Scan(&segment.UserId, &segment.IsActive, &segment.CreatedAt, &segment.DeletedAt); err != nil {
 			return nil, err
 		}
 		segments = append(segments, segment)
@@ -252,4 +253,19 @@ func (s *Storage) GetReport(userId int, startDate, endDate time.Time) ([]storage
 	}
 
 	return segments, nil
+}
+
+func (s *Storage) CheckForTTL() (int, error) {
+
+	current := time.Now().Add(-time.Nanosecond)
+
+	query := "UPDATE users_segments SET isActive = false WHERE ttl = $1	RETURNING user_id"
+
+	var userId int
+	err := s.db.QueryRow(query, current).Scan(&userId)
+	if err != nil {
+		return -1, err
+	}
+
+	return userId, nil
 }

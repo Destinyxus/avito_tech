@@ -1,5 +1,7 @@
 package pkg
 
+import "time"
+
 type Segment struct {
 	Slug string `json:"slug"`
 }
@@ -9,8 +11,9 @@ type User struct {
 }
 
 type SegmentToAdd struct {
-	Id   int      `json:"id"`
-	Slug []string `json:"slug"`
+	Id   int           `json:"id"`
+	Slug []string      `json:"slug"`
+	TTL  time.Duration `json:"ttl"`
 }
 
 type RequestActive struct {

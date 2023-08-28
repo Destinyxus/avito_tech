@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"avito_service/internal/config"
+	"avito_service/internal/service/ttl"
 	"avito_service/internal/storage/postgres"
 	"avito_service/utils"
 )
@@ -33,8 +34,15 @@ func main() {
 		logger.Error("failed to initialize db", err)
 		os.Exit(1)
 	}
-	_ = storage
 	logger.Info("database is up!")
+
+	go func() {
+		if err := ttl.TTLChecker(logger, storage); err != nil {
+			logger.Error("checker not launched..", err)
+			os.Exit(1)
+		}
+
+	}()
 
 	router := chi.NewRouter()
 	utils.ConfigureRouter(router, logger, storage)

@@ -1,11 +1,14 @@
 package user
 
 import (
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/middleware"
@@ -62,7 +65,23 @@ func GetCSV(logger *slog.Logger, tracker Tracker) http.HandlerFunc {
 
 		logger.Info("success", segment)
 
-		response.WriteToJson(writer, http.StatusOK, segment)
+		var csvData bytes.Buffer
+		csvWriter := csv.NewWriter(&csvData)
 
+		csvWriter.Write([]string{"user_id", "is_active", "created_at", "deleted_at"})
+
+		for _, segment := range segment {
+			csvWriter.Write([]string{
+				strconv.Itoa(segment.UserId),
+				strconv.FormatBool(segment.IsActive),
+				segment.CreatedAt.Format("2006-01-02 15:04:05"),
+				segment.DeletedAt.Format("2006-01-02 15:04:05"),
+			})
+		}
+		csvWriter.Flush()
+		writer.Header().Set("Content-Type", "text/csv")
+		writer.Header().Set("Content-Disposition", "attachment; filename=segments_history.csv")
+
+		writer.Write(csvData.Bytes())
 	}
 }
