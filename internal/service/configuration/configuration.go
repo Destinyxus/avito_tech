@@ -1,4 +1,4 @@
-package utils
+package configuration
 
 import (
 	"log/slog"
@@ -10,6 +10,7 @@ import (
 	"avito_service/internal/http_server/handlers/segment"
 	"avito_service/internal/http_server/handlers/user"
 	"avito_service/internal/storage/postgres"
+	"avito_service/utils"
 )
 
 func ConfigureRouter(mux *chi.Mux, logger *slog.Logger, storage *postgres.Storage) {
@@ -26,13 +27,13 @@ func ConfigureLogger(env string) *slog.Logger {
 	logger := &slog.Logger{}
 
 	switch env {
-	case EnvLocal:
+	case utils.EnvLocal:
 		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	case EnvDev:
+	case utils.EnvDev:
 		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	case EnvProd:
+	case utils.EnvProd:
 		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	}

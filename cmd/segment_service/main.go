@@ -10,9 +10,9 @@ import (
 	"github.com/joho/godotenv"
 
 	"avito_service/internal/config"
+	"avito_service/internal/service/configuration"
 	"avito_service/internal/service/ttl"
 	"avito_service/internal/storage/postgres"
-	"avito_service/utils"
 )
 
 var (
@@ -27,7 +27,7 @@ func main() {
 	flag.StringVar(&cfgFlag, "path", "", "config-path")
 	flag.Parse()
 	cfg := config.LoadConfig(cfgFlag)
-	logger := utils.ConfigureLogger(cfg.Env)
+	logger := configuration.ConfigureLogger(cfg.Env)
 	logger.Info("config and logger successfully configured!")
 	storage, err := postgres.NewStorage()
 	if err != nil {
@@ -45,7 +45,7 @@ func main() {
 	}()
 
 	router := chi.NewRouter()
-	utils.ConfigureRouter(router, logger, storage)
+	configuration.ConfigureRouter(router, logger, storage)
 
 	server := &http.Server{
 		Addr:        cfg.Address,
