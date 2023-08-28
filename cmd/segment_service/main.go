@@ -54,6 +54,7 @@ func main() {
 		IdleTimeout: cfg.IdleTimeOut,
 	}
 
+	logger.Info("Starting server...")
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal("failed to start server", err)
 	}

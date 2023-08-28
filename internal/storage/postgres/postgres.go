@@ -258,11 +258,11 @@ func (s *Storage) GetReport(userId int, startDate, endDate time.Time) ([]storage
 func (s *Storage) CheckForTTL() (int, error) {
 
 	current := time.Now().Add(-time.Nanosecond)
-
-	query := "UPDATE users_segments SET isActive = false WHERE ttl = $1	RETURNING user_id"
+	fmt.Println(current)
+	query := "UPDATE users_segments SET isActive = false, deleted_at = $1 WHERE ttl <= $2 and isActive = true RETURNING user_id"
 
 	var userId int
-	err := s.db.QueryRow(query, current).Scan(&userId)
+	err := s.db.QueryRow(query, current, current).Scan(&userId)
 	if err != nil {
 		return -1, err
 	}

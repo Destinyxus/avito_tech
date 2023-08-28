@@ -3,7 +3,6 @@ package segment
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -38,8 +37,8 @@ func GetActive(logger *slog.Logger, active GetterActive) http.HandlerFunc {
 		if err != nil {
 			var notFound storage.SegmentsNotFound
 			if errors.As(err, &notFound) {
-				logger.Error("active segments not found for this user", notFound)
-				response.WriteToJson(writer, http.StatusNotFound, fmt.Sprintf("segments not found %v", segments))
+				logger.Error("active segments not found for this user")
+				response.WriteToJson(writer, http.StatusNotFound, notFound.Error())
 				return
 			} else {
 				logger.Error("unexpected error", err)

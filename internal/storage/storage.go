@@ -41,7 +41,7 @@ func (o SegmentAlreadyExistsError) Error() string {
 	return fmt.Sprintf("segment %s already exists", o.Slug)
 }
 func (s SegmentsNotFound) Error() string {
-	return fmt.Sprintf("no any active segment for this user was found")
+	return fmt.Sprintf("none of any active segments for this user were found")
 }
 
 func (e SegmentAlreadyExistsForUserError) Error() string {

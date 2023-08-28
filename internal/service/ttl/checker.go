@@ -12,13 +12,13 @@ type Checker interface {
 
 func TTLChecker(logger *slog.Logger, checker Checker) error {
 
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Minute * 1)
 	for {
 		select {
 		case <-ticker.C:
 			id, err := checker.CheckForTTL()
 			if err != nil {
-				logger.Error("unexpected error while checking for ttl")
+				logger.Error("no expired segments")
 				continue
 			}
 			logger.Info(fmt.Sprintf("the segment of user %d has been expired", id))
