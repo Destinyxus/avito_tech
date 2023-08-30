@@ -1,0 +1,39 @@
+version: "3"
+
+services:
+  db:
+    image: postgres:15.4-alpine3.18
+    container_name: "database"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 10120001
+      POSTGRES_DB: segmentsdb
+    networks:
+        - fullstack
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./config/local.yaml:/local.yaml
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/segmentsdb?sslmode=disable
+    depends_on:
+      - db
+    networks:
+      - fullstack
+
+
+volumes:
+  postgres_data:
+
+networks:
+  fullstack:
+    driver: bridge
